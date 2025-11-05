@@ -125,7 +125,7 @@ const ProgressionChart = ({ exerciseId, exerciseName, history }) => {
     const getCoords = (p) => ({ x: lastD === firstD ? 50 : ((p.date.getTime() - firstD) / (lastD - firstD)) * 100, y: maxW === minW ? 50 : 100 - ((p.weight - minW) / (maxW - minW)) * 90 - 5 });
     const path = dataPoints.map(getCoords).map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    return React.createElement("div", { className: "progression-chart" }, React.createElement("h4", null, exerciseName), React.createElement("svg", { viewBox: "0 0 100 100", preserveAspectRatio: "none", style: { width: '100%', height: '100px' } }, React.createElement("path", { d: path, fill: "none", stroke: "url(#line-gradient)", strokeWidth: "2" }), React.createElement("defs", null, React.createElement("linearGradient", { id: "line-gradient", x1: "0%", y1: "0%", x2: "100%", y2: "0%" }, React.createElement("stop", { offset: "0%", stopColor: "var(--primary-gradient-start)" }), React.createElement("stop", { offset: "100%", stopColor: "var(--primary-gradient-end)" })))));
+    return React.createElement("div", { className: "progression-chart" }, React.createElement("h4", null, exerciseName), React.createElement("svg", { viewBox: "0 0 100 100", preserveAspectRatio: "none", style: { width: '100%', height: '100px' } }, React.createElement("path", { d: path, fill: "none", stroke: "url(#line-gradient-chart)", strokeWidth: "2" }), React.createElement("defs", null, React.createElement("linearGradient", { id: "line-gradient-chart", x1: "0%", y1: "0%", x2: "100%", y2: "0%" }, React.createElement("stop", { offset: "0%", stopColor: "var(--color-primary)" }), React.createElement("stop", { offset: "100%", stopColor: "var(--color-primary-light)" })))));
 };
 
 const RestTimer = ({ duration, onFinish }) => {
@@ -252,7 +252,7 @@ const StatisticsView = ({ getExercisePR, history }) => {
     const hasHistory = Object.keys(history).length > 0;
     return (
       React.createElement("div", { className: "main-content" },
-        React.createElement("h2", { className: "stats-header" }, "Statistiques & Progression"),
+        React.createElement("h2", { className: "stats-header" }, "Tableau de Bord"),
         !hasHistory && React.createElement("div", { className: "empty-stat" }, "Enregistrez votre première séance pour voir vos statistiques ici !"),
         hasHistory && React.createElement(React.Fragment, null,
           React.createElement("div", { className: "stats-section" }, React.createElement("h3", null, "🗓️ Calendrier d'Activité"), React.createElement(CalendarHeatmap, { history: history })),
@@ -289,7 +289,7 @@ const WorkoutPlannerView = ({ onStartWorkout }) => {
 
   return (
     React.createElement("div", { className: "main-content" },
-      React.createElement("header", { className: "header" }, React.createElement("h1", null, "HYBRID MASTER 51")),
+      React.createElement("header", { className: "header" }, React.createElement("h1", null, "Programme d'Entraînement")),
       React.createElement("div", { className: "week-navigator" }, React.createElement("button", { onClick: () => setCurrentWeek(w => Math.max(1, w - 1)), disabled: currentWeek === 1 }, "<"), React.createElement("div", { className: "week-display" }, "Semaine ", currentWeek), React.createElement("button", { onClick: () => setCurrentWeek(w => Math.min(26, w + 1)), disabled: currentWeek === 26 }, ">")),
       React.createElement("div", { className: "block-info" }, React.createElement("h3", null, currentBlock.name), React.createElement("p", null, React.createElement("strong", null, "Technique :"), " ", currentBlock.technique.desc)),
       React.createElement("div", { className: "tabs" }, ['dimanche', 'mardi', 'jeudi', 'vendredi'].map(day => React.createElement("button", { key: day, className: `tab ${activeDay === day ? 'active' : ''}`, onClick: () => setActiveDay(day) }, day.charAt(0).toUpperCase() + day.slice(1)))),
@@ -299,19 +299,20 @@ const WorkoutPlannerView = ({ onStartWorkout }) => {
           gymWorkout.exercises.map((exo, index) => React.createElement(ExerciseCard, { key: exo.id || `superset-${index}`, exercise: exo }))
         ),
         homeWorkout && React.createElement("div", { className: "home-workout-card" }, React.createElement("div", null, React.createElement("h4", null, "🏠 Séance à la Maison"), React.createElement("p", null, homeWorkout.name, " - ", homeWorkout.sets, " × ", homeWorkout.reps)), React.createElement("button", { className: "start-home-btn", onClick: () => onStartWorkout({ name: "Séance Maison", exercises: [homeWorkout] }, currentWeek, activeDay, true) }, "Démarrer")),
-        !gymWorkout && !homeWorkout && React.createElement("p", { style: { textAlign: 'center', marginTop: '2rem' } }, "Jour de repos.")
+        !gymWorkout && !homeWorkout && activeDay === 'jeudi' && React.createElement("p",{style:{textAlign:'center', marginTop:'2rem'}},"Séance à la maison uniquement aujourd'hui."),
+        !gymWorkout && !homeWorkout && activeDay !== 'jeudi' && React.createElement("p", { style: { textAlign: 'center', marginTop: '2rem' } }, "Jour de repos.")
       )
     )
   );
 };
 
 const BottomNav = ({ currentView, setView }) => (
-    React.createElement("nav", { className: "bottom-nav" }, React.createElement("button", { className: `nav-item ${currentView === 'program' ? 'active' : ''}`, onClick: () => setView('program') }, React.createElement(DumbbellIcon, null), React.createElement("span", null, "Programme")), React.createElement("button", { className: `nav-item ${currentView === 'stats' ? 'active' : ''}`, onClick: () => setView('stats') }, React.createElement(ChartIcon, null), React.createElement("span", null, "Stats")))
+    React.createElement("nav", { className: "bottom-nav" }, React.createElement("button", { className: `nav-item ${currentView === 'stats' ? 'active' : ''}`, onClick: () => setView('stats') }, React.createElement(ChartIcon, null), React.createElement("span", null, "Stats")), React.createElement("button", { className: `nav-item ${currentView === 'program' ? 'active' : ''}`, onClick: () => setView('program') }, React.createElement(DumbbellIcon, null), React.createElement("span", null, "Programme")))
 );
 
 // --- MAIN APP COMPONENT ---
 const App = () => {
-  const [currentView, setCurrentView] = useState('program');
+  const [currentView, setCurrentView] = useState('stats');
   const [activeWorkout, setActiveWorkout] = useState(null);
   const { history, saveWorkout, getExercisePR, getSuggestedWeight } = useWorkoutHistory();
   
@@ -323,8 +324,8 @@ const App = () => {
 
   return (
     React.createElement("div", { className: "app-container" },
-      React.createElement("div", { style: { display: currentView === 'program' ? 'block' : 'none', height: '100%' } }, React.createElement(WorkoutPlannerView, { onStartWorkout: handleStartWorkout })),
-      React.createElement("div", { style: { display: currentView === 'stats' ? 'block' : 'none', height: '100%' } }, React.createElement(StatisticsView, { getExercisePR: getExercisePR, history: history })),
+      React.createElement("div", { style: { display: currentView === 'program' ? 'flex' : 'none', flexDirection: 'column', height: '100%' } }, React.createElement(WorkoutPlannerView, { onStartWorkout: handleStartWorkout })),
+      React.createElement("div", { style: { display: currentView === 'stats' ? 'flex' : 'none', flexDirection: 'column', height: '100%' } }, React.createElement(StatisticsView, { getExercisePR: getExercisePR, history: history })),
       activeWorkout && React.createElement(ActiveWorkoutView, { key: activeWorkout.startTime, workout: activeWorkout.workout, meta: activeWorkout.meta, onEndWorkout: handleEndWorkout, getSuggestedWeight: getSuggestedWeight }),
       !activeWorkout && React.createElement(BottomNav, { currentView: currentView, setView: setCurrentView })
     )
