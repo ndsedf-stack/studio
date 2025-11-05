@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -144,8 +145,37 @@ const IntensificationStep = ({ title, description, actionText, onAction, timer }
     return React.createElement("div", { className: "intensification-prompt" }, React.createElement("h4", null, title), description && React.createElement("p", null, description), timer && React.createElement("div", { className: "intensification-timer" }, "Repos: ", timeLeft, "s"), React.createElement("button", { className: "intensification-action", onClick: onAction, disabled: !!(timeLeft && timeLeft > 0) }, actionText));
 };
 
+const TechniqueHighlight = ({ exercise, block }) => {
+    if (!block) return null;
+    const getTechniqueForExo = (exo) => {
+        if (!exo.intensification) return null;
+        const techName = block.technique.name.toLowerCase();
+        if (techName.includes(exo.intensification.replace('-', ''))) {
+            return block.technique.name.split('&')[0].trim();
+        }
+        return null;
+    };
+    const techniques = [];
+    if (exercise.type === 'superset') {
+        exercise.exercises.forEach(exo => {
+            const tech = getTechniqueForExo(exo);
+            if (tech && !techniques.includes(tech)) {
+                techniques.push(tech);
+            }
+        });
+    } else {
+        const tech = getTechniqueForExo(exercise);
+        if (tech) {
+            techniques.push(tech);
+        }
+    }
+    if (techniques.length === 0) return null;
+    return React.createElement("div", { className: "technique-highlight-box" }, React.createElement("strong", null, "🔥 Technique Spéciale: "), techniques.join(' / '));
+};
+
+
 const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, block }) => {
-    const [intensificationState, setIntensificationState] = useState({ active: false, step: 0 });
+    const [intensificationState, setIntensificationState] = useState({ active: false, step: 0, type: null });
 
     const handleCheck = (set, setIndex, subExoIndex = -1) => {
         onSetComplete(!set.completed, setIndex, subExoIndex);
@@ -158,8 +188,8 @@ const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, bl
     const renderIntensificationGuide = (exo, subExoIndex = -1) => {
         if (!intensificationState.active || intensificationState.type !== exo.intensification || !block) return null;
         const lastSet = [...exo.sets].filter((s) => !s.isBonus).pop(); if (!lastSet) return null;
-        if (block.technique.name === 'Rest-Pause' && intensificationState.type === 'rest-pause') return React.createElement(IntensificationStep, { title: "🔥 Rest-Pause", actionText: "Ajouter la série bonus", onAction: () => { onAddBonusSet({ weight: lastSet.weight, reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); }, timer: 20 });
-        if (block.technique.name.includes('Drop-Sets') && intensificationState.type === 'drop-set') return React.createElement(IntensificationStep, { title: "🔥 Drop-Set", description: "Baissez le poids de ~25%.", actionText: "Ajouter la série Drop", onAction: () => { onAddBonusSet({ weight: (parseFloat(String(lastSet.weight)) * 0.75).toFixed(1), reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); } });
+        if (block.technique.name === 'Rest-Pause' && intensificationState.type === 'rest-pause') return React.createElement(IntensificationStep, { title: "🔥 Rest-Pause", actionText: "Ajouter la série bonus", onAction: () => { onAddBonusSet({ weight: lastSet.weight, reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0, type: null }); }, timer: 20 });
+        if (block.technique.name.includes('Drop-Sets') && intensificationState.type === 'drop-set') return React.createElement(IntensificationStep, { title: "🔥 Drop-Set", description: "Baissez le poids de ~25%.", actionText: "Ajouter la série Drop", onAction: () => { onAddBonusSet({ weight: (parseFloat(String(lastSet.weight)) * 0.75).toFixed(1), reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0, type: null }); } });
         return null;
     };
     
@@ -209,7 +239,7 @@ const ActiveWorkoutView = ({ workout, meta, onEndWorkout, getSuggestedWeight }) 
         targetExo.sets.push({ id: targetExo.sets.length, weight: '', reps: '', rir: 0, ...newSet, completed: false, isBonus: true });
         setWorkoutState(newWorkoutState);
     };
-    return React.createElement("div", { className: "active-workout-overlay" }, React.createElement("div", { className: "workout-header" }, React.createElement("span", { className: "workout-progress" }, currentIndex + 1, " / ", workoutState.length), React.createElement("button", { className: "end-workout-btn", onClick: () => onEndWorkout({ exercises: workoutState }) }, "Terminer")), React.createElement("div", { className: "current-exercise-info" }, React.createElement("h2", null, currentExercise.name || (currentExercise.exercises || []).map(e => e.name).join(' + '))), React.createElement("div", { className: "sets-tracker-container" }, React.createElement(SetsTracker, { exercise: currentExercise, onSetComplete: handleSetComplete, onInputChange: handleInputChange, onAddBonusSet: handleAddBonusSet, block: currentBlock })), React.createElement("div", { className: "workout-navigation" }, React.createElement("button", { onClick: () => setCurrentIndex(i => i - 1), disabled: currentIndex === 0 }, "Précédent"), React.createElement("button", { onClick: () => setCurrentIndex(i => i + 1), disabled: currentIndex === workoutState.length - 1 }, "Suivant")), isResting && React.createElement(RestTimer, { duration: restTime, onFinish: () => setIsResting(false) }));
+    return React.createElement("div", { className: "active-workout-overlay" }, React.createElement("div", { className: "workout-header" }, React.createElement("span", { className: "workout-progress" }, currentIndex + 1, " / ", workoutState.length), React.createElement("button", { className: "end-workout-btn", onClick: () => onEndWorkout({ exercises: workoutState }) }, "Terminer")), React.createElement("div", { className: "current-exercise-info" }, React.createElement("h2", null, currentExercise.name || (currentExercise.exercises || []).map(e => e.name).join(' + '))), React.createElement(TechniqueHighlight, { exercise: currentExercise, block: currentBlock }), React.createElement("div", { className: "sets-tracker-container" }, React.createElement(SetsTracker, { exercise: currentExercise, onSetComplete: handleSetComplete, onInputChange: handleInputChange, onAddBonusSet: handleAddBonusSet, block: currentBlock })), React.createElement("div", { className: "workout-navigation" }, React.createElement("button", { onClick: () => setCurrentIndex(i => i - 1), disabled: currentIndex === 0 }, "Précédent"), React.createElement("button", { onClick: () => setCurrentIndex(i => i + 1), disabled: currentIndex === workoutState.length - 1 }, "Suivant")), isResting && React.createElement(RestTimer, { duration: restTime, onFinish: () => setIsResting(false) }));
 };
 
 // --- VIEW COMPONENTS ---
@@ -322,10 +352,20 @@ const App = () => {
     setActiveWorkout(null);
   };
 
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'program':
+        return React.createElement(WorkoutPlannerView, { onStartWorkout: handleStartWorkout });
+      case 'stats':
+        return React.createElement(StatisticsView, { getExercisePR: getExercisePR, history: history });
+      default:
+        return null;
+    }
+  };
+
   return (
     React.createElement("div", { className: "app-container" },
-      React.createElement("div", { style: { display: currentView === 'program' ? 'flex' : 'none', flexDirection: 'column', height: '100%' } }, React.createElement(WorkoutPlannerView, { onStartWorkout: handleStartWorkout })),
-      React.createElement("div", { style: { display: currentView === 'stats' ? 'flex' : 'none', flexDirection: 'column', height: '100%' } }, React.createElement(StatisticsView, { getExercisePR: getExercisePR, history: history })),
+      renderCurrentView(),
       activeWorkout && React.createElement(ActiveWorkoutView, { key: activeWorkout.startTime, workout: activeWorkout.workout, meta: activeWorkout.meta, onEndWorkout: handleEndWorkout, getSuggestedWeight: getSuggestedWeight }),
       !activeWorkout && React.createElement(BottomNav, { currentView: currentView, setView: setCurrentView })
     )
