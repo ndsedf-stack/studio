@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -258,7 +256,6 @@ const TechniqueHighlight = ({ exercise, block }) => {
     return React.createElement("div", { className: "technique-highlight-box" }, React.createElement("strong", null, "🔥 Technique Spéciale: "), techniques.join(' / '));
 };
 
-
 const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, block }) => {
     const [intensificationState, setIntensificationState] = useState({ active: false, step: 0, type: null });
 
@@ -279,8 +276,43 @@ const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, bl
     };
     
     if (exercise.type === 'superset') {
-      const numSets = exercise.exercises[0].sets.filter((s) => !s.isBonus).length;
-      return React.createElement("div", { className: "sets-tracker" }, Array.from({ length: numSets }).map((_, setIndex) => React.createElement("div", { className: "set-row", key: `superset-set-${setIndex}` }, React.createElement("div", { className: "set-number" }, setIndex + 1), exercise.exercises.map((subExo, subExoIndex) => React.createElement("div", { key: subExo.id, className: "set-input-group" }, React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.weight || '', onChange: (e) => onInputChange(e.target.value, 'weight', setIndex, subExoIndex), placeholder:"Poids" }), React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.reps || '', onChange: (e) => onInputChange(e.target.value, 'reps', setIndex, subExoIndex), placeholder:"Reps" }))), React.createElement("button", { className: `set-check-btn ${exercise.exercises[0].sets[setIndex]?.completed ? 'completed' : ''}`, onClick: () => { onSetComplete(!exercise.exercises[0].sets[setIndex]?.completed, setIndex, 0); onSetComplete(!exercise.exercises[1].sets[setIndex]?.completed, setIndex, 1); } }, "✓"))));
+      const numSets = exercise.exercises[0].sets.filter(s => !s.isBonus).length;
+      return React.createElement("div", { className: "sets-tracker" }, 
+        Array.from({ length: numSets }).map((_, setIndex) => (
+            React.createElement("div", { className: "superset-set-row", key: `superset-set-${setIndex}` },
+                React.createElement("div", {className: "set-number"}, setIndex + 1),
+                React.createElement("div", { className: "superset-set-exercises" },
+                    exercise.exercises.map((subExo, subExoIndex) => (
+                        React.createElement("div", { className: "superset-set-exercise-card", key: subExo.id },
+                            React.createElement("div", { className: "superset-set-exercise-name" }, subExo.name),
+                            React.createElement("div", { className: "superset-set-inputs" },
+                                React.createElement("div", { className: "set-input" },
+                                    React.createElement("label", null, "Poids"),
+                                    React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.weight || '', onChange: (e) => onInputChange(e.target.value, 'weight', setIndex, subExoIndex) })
+                                ),
+                                React.createElement("div", { className: "set-input" },
+                                    React.createElement("label", null, "Reps"),
+                                    React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.reps || '', onChange: (e) => onInputChange(e.target.value, 'reps', setIndex, subExoIndex) })
+                                ),
+                                React.createElement("div", { className: "set-input" },
+                                    React.createElement("label", null, "RIR"),
+                                    React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.rir || '', onChange: (e) => onInputChange(e.target.value, 'rir', setIndex, subExoIndex) })
+                                )
+                            )
+                        )
+                    ))
+                ),
+                React.createElement("button", { 
+                    className: `set-check-btn ${exercise.exercises[0].sets[setIndex]?.completed ? 'completed' : ''}`, 
+                    onClick: () => {
+                        const isCompleted = !exercise.exercises[0].sets[setIndex]?.completed;
+                        onSetComplete(isCompleted, setIndex, 0); 
+                        onSetComplete(isCompleted, setIndex, 1);
+                    } 
+                }, "✓")
+            )
+        ))
+      );
     }
 
     return React.createElement("div", { className: "sets-tracker-container" }, React.createElement("div", { className: "sets-tracker" }, exercise.sets.map((set, index) => React.createElement("div", { className: `set-row ${set.isBonus ? 'bonus-set' : ''}`, key: set.id }, React.createElement("div", { className: "set-number" }, set.isBonus ? '🔥' : index + 1), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "Poids"), React.createElement("input", { type: "number", value: set.weight, onChange: (e) => onInputChange(e.target.value, 'weight', index) })), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "Reps"), React.createElement("input", { type: "number", value: set.reps, onChange: (e) => onInputChange(e.target.value, 'reps', index) })), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "RIR"), React.createElement("input", { type: "number", value: set.rir, onChange: (e) => onInputChange(e.target.value, 'rir', index) })), React.createElement("button", { className: `set-check-btn ${set.completed ? 'completed' : ''}`, onClick: () => handleCheck(set, index) }, "✓"))), renderIntensificationGuide(exercise)));
@@ -476,7 +508,7 @@ const App = () => {
     React.createElement("div", { className: "app-container" },
       renderCurrentView(),
       activeWorkout && React.createElement(ActiveWorkoutView, { key: activeWorkout.startTime, workout: activeWorkout.workout, meta: activeWorkout.meta, onEndWorkout: handleEndWorkout, getSuggestedWeight: getSuggestedWeight }),
-      !activeWorkout && React.createElement(BottomNav, { currentView: currentView, setView: setCurrentView })
+      React.createElement(BottomNav, { currentView: currentView, setView: setCurrentView })
     )
   );
 };
