@@ -1,3 +1,4 @@
+
 :root {
   --color-background: #000000;
   --color-surface: #1C1C1E;
@@ -202,6 +203,20 @@ h4 { font-size: 1.1rem; }
 .workout-navigation { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; }
 .workout-navigation button { background: var(--color-surface); color: var(--color-text-primary); border: 1px solid var(--color-border); padding: 1rem 2rem; border-radius: var(--border-radius-inner); font-weight: 600; cursor: pointer; }
 .workout-navigation button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.technique-highlight-box {
+  background: rgba(255, 159, 10, 0.1);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--border-radius-inner);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0 0 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.technique-highlight-box strong {
+  color: var(--color-accent);
+}
+
 .intensification-prompt { background: var(--color-surface); border-top: 2px solid var(--color-accent); padding: 1rem; margin-top: 1rem; text-align: center; border-radius: var(--border-radius-inner); }
 .intensification-prompt h4 { color: var(--color-accent); }
 .intensification-timer { font-size: 1.5rem; font-weight: 700; color: var(--color-accent); margin: 0.5rem 0; }
