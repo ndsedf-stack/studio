@@ -1,36 +1,43 @@
+
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
-// --- TYPE DEFINITIONS ---
+// --- TYPE DEFINITIONS for workout history ---
 interface SetRecord {
-  id: number;
-  weight: string | number;
-  reps: string | number;
-  rir: string | number;
-  completed: boolean;
-  isBonus?: boolean;
+    id: number;
+    weight: string | number;
+    reps: string | number;
+    rir: string | number;
+    completed: boolean;
+    isBonus?: boolean;
 }
 
-interface ExerciseRecord {
-  id: string;
-  name: string;
-  sets: SetRecord[];
-  type?: 'superset';
-  exercises?: ExerciseRecord[];
-  notes?: string;
-  rest?: number;
+interface LoggedExercise {
+    id: string;
+    name: string;
+    sets: SetRecord[];
+    type?: 'superset';
+    exercises?: LoggedExercise[];
+    bicepsRotation?: boolean;
+    rir?: number;
+    reps?: string;
+    rest?: number;
+    startWeight?: number;
+    progression?: { increment: number };
+    intensification?: string;
 }
 
-interface WorkoutRecord {
-  date: string;
-  week: number;
-  day: string;
-  isHomeWorkout: boolean;
-  exercises: ExerciseRecord[];
+interface WorkoutLog {
+    date: string;
+    week: number;
+    day: string;
+    isHomeWorkout: boolean;
+    exercises: LoggedExercise[];
 }
 
 interface HistoryData {
-  [date: string]: WorkoutRecord;
+    [date: string]: WorkoutLog;
 }
 
 // --- DATA STRUCTURE & DATABASE ---
@@ -66,16 +73,17 @@ const programData = {
 const DB_KEY = 'hybridMaster51_data_v4';
 
 const useWorkoutHistory = () => {
+    // FIX: Typed history state to resolve multiple 'property does not exist on type unknown' errors.
     const [history, setHistory] = useState<HistoryData>(() => { try { const s = localStorage.getItem(DB_KEY); return s ? JSON.parse(s) : {}; } catch (e) { return {}; } });
-    const saveWorkout = useCallback((w: WorkoutRecord) => { const n = { ...history, [w.date]: w }; setHistory(n); localStorage.setItem(DB_KEY, JSON.stringify(n)); }, [history]);
+    const saveWorkout = useCallback((w: WorkoutLog) => { const n = { ...history, [w.date]: w }; setHistory(n); localStorage.setItem(DB_KEY, JSON.stringify(n)); }, [history]);
     
-    const getExercisePR = useCallback((exerciseId: string) => {
+    const getExercisePR = useCallback((exerciseId) => {
         let best = { weight: 0, reps: 0 };
-        Object.values(history).forEach((workout: any) => {
+        Object.values(history).forEach((workout) => {
             if (!workout?.exercises) return;
-            const processExo = (exo: any) => {
+            const processExo = (exo) => {
                 if (exo.id === exerciseId) {
-                    (exo.sets || []).forEach((set: any) => {
+                    (exo.sets || []).forEach((set) => {
                         const w = parseFloat(String(set.weight));
                         const r = parseInt(String(set.reps));
                         if (set.completed && w >= best.weight) {
@@ -85,21 +93,21 @@ const useWorkoutHistory = () => {
                     });
                 }
             };
-            workout.exercises.forEach((exo: any) => { (exo.type === 'superset' ? exo.exercises : [exo]).forEach(processExo); });
+            workout.exercises.forEach((exo) => { (exo.type === 'superset' ? exo.exercises : [exo]).forEach(processExo); });
         });
         return best;
     }, [history]);
 
-    const getSuggestedWeight = useCallback((exercise: any) => {
-        const historyEntries: any[] = Object.values(history).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const getSuggestedWeight = useCallback((exercise) => {
+        const historyEntries = Object.values(history).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         for (const entry of historyEntries) {
             if (!entry?.exercises) continue;
             for (const performedExo of entry.exercises) {
-                const checkExo = (exo: any) => {
+                const checkExo = (exo) => {
                     if (exo.id === exercise.id && exo.sets?.length > 0) {
                         const lastSet = exo.sets[exo.sets.length - 1];
                         if (lastSet?.completed) {
-                            const targetReps = parseInt((exercise.reps || "0").split('-').pop()!);
+                            const targetReps = parseInt((exercise.reps || "0").split('-').pop());
                             if (parseInt(String(lastSet.reps)) >= targetReps && parseInt(String(lastSet.rir)) >= (exercise.rir || 1)) {
                                 return parseFloat(String(lastSet.weight)) + (exercise.progression?.increment || 0);
                             }
@@ -118,11 +126,11 @@ const useWorkoutHistory = () => {
 };
 
 // --- ICONS ---
-const DumbbellIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 8.5C21 7.12 19.88 6 18.5 6H17V5C17 4.45 16.55 4 16 4H8C7.45 4 7 4.45 7 5V6H5.5C4.12 6 3 7.12 3 8.5V15.5C3 16.88 4.12 18 5.5 18H7V19C7 19.55 7.45 20 8 20H16C16.55 20 17 19.55 17 19V18H18.5C19.88 18 21 16.88 21 15.5V8.5ZM5 16.5V8.5C5 8.22 5.22 8 5.5 8H6V16H5.5C5.22 16 5 16.28 5 16.5ZM19 15.5C19 16.28 18.78 16 18.5 16H18V8H18.5C18.78 8 19 8.22 19 8.5V15.5Z"></path></svg>;
-const ChartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6H18V20H16V6ZM11 11H13V20H11V11ZM6 16H8V20H6V16ZM20 2H2V4H20V2Z"></path></svg>;
+const DumbbellIcon = () => React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor" }, React.createElement("path", { d: "M21 8.5C21 7.12 19.88 6 18.5 6H17V5C17 4.45 16.55 4 16 4H8C7.45 4 7 4.45 7 5V6H5.5C4.12 6 3 7.12 3 8.5V15.5C3 16.88 4.12 18 5.5 18H7V19C7 19.55 7.45 20 8 20H16C16.55 20 17 19.55 17 19V18H18.5C19.88 18 21 16.88 21 15.5V8.5ZM5 16.5V8.5C5 8.22 5.22 8 5.5 8H6V16H5.5C5.22 16 5 16.28 5 16.5ZM19 15.5C19 16.28 18.78 16 18.5 16H18V8H18.5C18.78 8 19 8.22 19 8.5V15.5Z" }));
+const ChartIcon = () => React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor" }, React.createElement("path", { d: "M16 6H18V20H16V6ZM11 11H13V20H11V11ZM6 16H8V20H6V16ZM20 2H2V4H20V2Z" }));
 
 // --- REUSABLE COMPONENTS ---
-const CalendarHeatmap = ({ history }: { history: HistoryData }) => {
+const CalendarHeatmap = ({ history }) => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 180);
@@ -133,93 +141,96 @@ const CalendarHeatmap = ({ history }: { history: HistoryData }) => {
         currentDate.setDate(currentDate.getDate() + 1);
     }
     const workoutDates = Object.keys(history).map(dateStr => new Date(dateStr).toDateString());
-    return <div className="heatmap-container">{dates.map(date => <div key={date.toISOString()} className="heatmap-day" data-level={workoutDates.includes(date.toDateString()) ? 2 : 0}></div>)}</div>;
+    return React.createElement("div", { className: "heatmap-container" }, dates.map(date => React.createElement("div", { key: date.toISOString(), className: "heatmap-day", "data-level": workoutDates.includes(date.toDateString()) ? 2 : 0 })));
 };
 
-const ProgressionChart = ({ exerciseId, exerciseName, history }: { exerciseId: string, exerciseName: string, history: HistoryData }) => {
+const ProgressionChart = ({ exerciseId, exerciseName, history }) => {
     const dataPoints = useMemo(() => {
-        const points: { date: Date; weight: number }[] = [];
-        Object.values(history).forEach((w: any) => {
+        const points = [];
+        Object.values(history).forEach((w) => {
             if (!w?.exercises) return;
             let maxWeight = 0;
-            w.exercises.forEach((exo: any) => (exo.type === 'superset' ? exo.exercises : [exo]).forEach((subExo: any) => {
-                if(subExo.id === exerciseId) subExo.sets.forEach((set: any) => { if (set.completed) maxWeight = Math.max(maxWeight, parseFloat(String(set.weight))); });
+            w.exercises.forEach((exo) => (exo.type === 'superset' ? exo.exercises : [exo]).forEach((subExo) => {
+                if(subExo.id === exerciseId) subExo.sets.forEach((set) => { if (set.completed) maxWeight = Math.max(maxWeight, parseFloat(String(set.weight))); });
             }));
             if (maxWeight > 0) points.push({ date: new Date(w.date), weight: maxWeight });
         });
         return points.sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [history, exerciseId]);
     
-    if (dataPoints.length < 2) return <div className="progression-chart"><h4 style={{marginBottom: 0}}>{exerciseName}</h4><p className="empty-stat-small">Pas assez de données pour un graphique.</p></div>;
+    if (dataPoints.length < 2) return React.createElement("div", { className: "progression-chart" }, React.createElement("h4", { style: { marginBottom: 0 } }, exerciseName), React.createElement("p", { className: "empty-stat-small" }, "Pas assez de donn\u00E9es pour un graphique."));
 
     const weights = dataPoints.map(p => p.weight), maxW = Math.max(...weights), minW = Math.min(...weights), firstD = dataPoints[0].date.getTime(), lastD = dataPoints[dataPoints.length - 1].date.getTime();
-    const getCoords = (p: { date: Date, weight: number }) => ({ x: lastD === firstD ? 50 : ((p.date.getTime() - firstD) / (lastD - firstD)) * 100, y: maxW === minW ? 50 : 100 - ((p.weight - minW) / (maxW - minW)) * 90 - 5 });
+    const getCoords = (p) => ({ x: lastD === firstD ? 50 : ((p.date.getTime() - firstD) / (lastD - firstD)) * 100, y: maxW === minW ? 50 : 100 - ((p.weight - minW) / (maxW - minW)) * 90 - 5 });
     const path = dataPoints.map(getCoords).map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
-    return <div className="progression-chart"><h4>{exerciseName}</h4><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{width: '100%', height: '100px'}}><path d={path} fill="none" stroke="url(#line-gradient)" strokeWidth="2" /><defs><linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-gradient-start)" /><stop offset="100%" stopColor="var(--primary-gradient-end)" /></linearGradient></defs></svg></div>;
+    return React.createElement("div", { className: "progression-chart" }, React.createElement("h4", null, exerciseName), React.createElement("svg", { viewBox: "0 0 100 100", preserveAspectRatio: "none", style: { width: '100%', height: '100px' } }, React.createElement("path", { d: path, fill: "none", stroke: "url(#line-gradient)", strokeWidth: "2" }), React.createElement("defs", null, React.createElement("linearGradient", { id: "line-gradient", x1: "0%", y1: "0%", x2: "100%", y2: "0%" }, React.createElement("stop", { offset: "0%", stopColor: "var(--primary-gradient-start)" }), React.createElement("stop", { offset: "100%", stopColor: "var(--primary-gradient-end)" })))));
 };
 
-const RestTimer = ({ duration, onFinish }: { duration: number, onFinish: () => void }) => {
+const RestTimer = ({ duration, onFinish }) => {
     const [timeLeft, setTimeLeft] = useState(duration);
     useEffect(() => { if (timeLeft <= 0) { onFinish(); return; } const i = setInterval(() => setTimeLeft(t => t > 0 ? t - 1 : 0), 1000); return () => clearInterval(i); }, [timeLeft, onFinish]);
-    return <div className="rest-timer-overlay"><h3>Repos</h3><div className="rest-timer-circle">{`${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`}</div><button className="skip-timer-btn" onClick={onFinish}>Passer</button></div>;
+    return React.createElement("div", { className: "rest-timer-overlay" }, React.createElement("h3", null, "Repos"), React.createElement("div", { className: "rest-timer-circle" }, `${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`), React.createElement("button", { className: "skip-timer-btn", onClick: onFinish }, "Passer"));
 };
 
-const IntensificationStep = ({ title, description, actionText, onAction, timer }: { title: string, description?: string, actionText: string, onAction: () => void, timer?: number }) => {
+const IntensificationStep = ({ title, description, actionText, onAction, timer }) => {
     const [timeLeft, setTimeLeft] = useState(timer);
     useEffect(() => {
         if (!timer) return;
-        const interval = setInterval(() => setTimeLeft(t => t! <= 1 ? 0 : t! - 1), 1000);
+        const interval = setInterval(() => setTimeLeft(t => t <= 1 ? 0 : t - 1), 1000);
         return () => clearInterval(interval);
     }, [timer]);
-    return <div className="intensification-prompt"><h4>{title}</h4>{description && <p>{description}</p>}{timer && <div className="intensification-timer">Repos: {timeLeft}s</div>}<button className="intensification-action" onClick={onAction} disabled={!!(timeLeft && timeLeft > 0)}>{actionText}</button></div>;
+    return React.createElement("div", { className: "intensification-prompt" }, React.createElement("h4", null, title), description && React.createElement("p", null, description), timer && React.createElement("div", { className: "intensification-timer" }, "Repos: ", timeLeft, "s"), React.createElement("button", { className: "intensification-action", onClick: onAction, disabled: !!(timeLeft && timeLeft > 0) }, actionText));
 };
 
-const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, block }: { exercise: ExerciseRecord, onSetComplete: any, onInputChange: any, onAddBonusSet: any, block: any }) => {
-    const [intensificationState, setIntensificationState] = useState<{ active: boolean, type?: string, step: number }>({ active: false, step: 0 });
+const SetsTracker = ({ exercise, onSetComplete, onInputChange, onAddBonusSet, block }) => {
+    // FIX: Added 'type' to intensificationState to track the kind of intensification, resolving property 'type' does not exist errors.
+    const [intensificationState, setIntensificationState] = useState<{ active: boolean, step: number, type?: string }>({ active: false, step: 0 });
 
-    const handleCheck = (set: SetRecord, setIndex: number, subExoIndex: number = -1) => {
+    const handleCheck = (set, setIndex, subExoIndex = -1) => {
         onSetComplete(!set.completed, setIndex, subExoIndex);
-        const targetExo = subExoIndex > -1 ? exercise.exercises![subExoIndex] : exercise;
-        if (!set.completed && !set.isBonus && setIndex === (targetExo as any).sets - 1 && (targetExo as any).intensification) {
-            setIntensificationState({ active: true, type: (targetExo as any).intensification, step: 1 });
+        const targetExo = subExoIndex > -1 ? exercise.exercises[subExoIndex] : exercise;
+        if (!set.completed && !set.isBonus && setIndex === targetExo.sets - 1 && targetExo.intensification) {
+            setIntensificationState({ active: true, type: targetExo.intensification, step: 1 });
         }
     };
 
-    const renderIntensificationGuide = (exo: any, subExoIndex: number = -1) => {
+    const renderIntensificationGuide = (exo, subExoIndex = -1) => {
         if (!intensificationState.active || intensificationState.type !== exo.intensification || !block) return null;
-        const lastSet = exo.sets.filter((s: SetRecord) => !s.isBonus).pop(); if (!lastSet) return null;
-        if (block.technique.name === 'Rest-Pause' && intensificationState.type === 'rest-pause') return <IntensificationStep title="🔥 Rest-Pause" actionText="Ajouter la série bonus" onAction={() => { onAddBonusSet({ weight: lastSet.weight, reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); }} timer={20} />;
-        if (block.technique.name.includes('Drop-Sets') && intensificationState.type === 'drop-set') return <IntensificationStep title="🔥 Drop-Set" description="Baissez le poids de ~25%." actionText="Ajouter la série Drop" onAction={() => { onAddBonusSet({ weight: (parseFloat(String(lastSet.weight)) * 0.75).toFixed(1), reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); }} />;
+        const lastSet = exo.sets.filter((s) => !s.isBonus).pop(); if (!lastSet) return null;
+        // FIX: Added missing 'description' prop to fix overload error.
+        if (block.technique.name === 'Rest-Pause' && intensificationState.type === 'rest-pause') return React.createElement(IntensificationStep, { title: "\uD83D\uDD25 Rest-Pause", actionText: "Ajouter la s\u00E9rie bonus", onAction: () => { onAddBonusSet({ weight: lastSet.weight, reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); }, timer: 20, description: null });
+        // FIX: Added missing 'timer' prop to fix overload error.
+        if (block.technique.name.includes('Drop-Sets') && intensificationState.type === 'drop-set') return React.createElement(IntensificationStep, { title: "\uD83D\uDD25 Drop-Set", description: "Baissez le poids de ~25%.", actionText: "Ajouter la s\u00E9rie Drop", onAction: () => { onAddBonusSet({ weight: (parseFloat(String(lastSet.weight)) * 0.75).toFixed(1), reps: '', rir: 0 }, subExoIndex); setIntensificationState({ active: false, step: 0 }); }, timer: null });
         return null;
     };
     
     if (exercise.type === 'superset') {
-      const numSets = (exercise.exercises![0] as any).sets;
+      const numSets = exercise.exercises[0].sets;
       const allSets = Array.from({ length: numSets });
-      return <div className="sets-tracker">{allSets.map((_, setIndex) => <div className="set-row" key={setIndex}><div className="set-number">{setIndex + 1}</div>{exercise.exercises!.map((subExo, subExoIndex) => <div key={subExo.id} className="set-input-group"><input type="number" value={subExo.sets[setIndex]?.weight || ''} onChange={(e) => onInputChange(e.target.value, 'weight', setIndex, subExoIndex)} /><input type="number" value={subExo.sets[setIndex]?.reps || ''} onChange={(e) => onInputChange(e.target.value, 'reps', setIndex, subExoIndex)} /></div>)}<button className={`set-check-btn ${exercise.exercises![0].sets[setIndex]?.completed ? 'completed' : ''}`} onClick={() => { handleCheck(exercise.exercises![0].sets[setIndex], setIndex, 0); handleCheck(exercise.exercises![1].sets[setIndex], setIndex, 1); }}>✓</button></div>)}</div>;
+      return React.createElement("div", { className: "sets-tracker" }, allSets.map((_, setIndex) => React.createElement("div", { className: "set-row", key: setIndex }, React.createElement("div", { className: "set-number" }, setIndex + 1), exercise.exercises.map((subExo, subExoIndex) => React.createElement("div", { key: subExo.id, className: "set-input-group" }, React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.weight || '', onChange: (e) => onInputChange(e.target.value, 'weight', setIndex, subExoIndex) }), React.createElement("input", { type: "number", value: subExo.sets[setIndex]?.reps || '', onChange: (e) => onInputChange(e.target.value, 'reps', setIndex, subExoIndex) }))), React.createElement("button", { className: `set-check-btn ${exercise.exercises[0].sets[setIndex]?.completed ? 'completed' : ''}`, onClick: () => { handleCheck(exercise.exercises[0].sets[setIndex], setIndex, 0); handleCheck(exercise.exercises[1].sets[setIndex], setIndex, 1); } }, "\u2713"))));
     }
 
-    return <div className="sets-tracker-container"><div className="sets-tracker">{exercise.sets.map((set, index) => <div className={`set-row ${set.isBonus ? 'bonus-set' : ''}`} key={set.id}><div className="set-number">{set.isBonus ? '🔥' : index + 1}</div><div className="set-input"><label>Poids</label><input type="number" value={set.weight} onChange={(e) => onInputChange(e.target.value, 'weight', index)} /></div><div className="set-input"><label>Reps</label><input type="number" value={set.reps} onChange={(e) => onInputChange(e.target.value, 'reps', index)} /></div><div className="set-input"><label>RIR</label><input type="number" value={set.rir} onChange={(e) => onInputChange(e.target.value, 'rir', index)} /></div><button className={`set-check-btn ${set.completed ? 'completed' : ''}`} onClick={() => handleCheck(set, index)}>✓</button></div>)}{renderIntensificationGuide(exercise)}</div></div>;
+    return React.createElement("div", { className: "sets-tracker-container" }, React.createElement("div", { className: "sets-tracker" }, exercise.sets.map((set, index) => React.createElement("div", { className: `set-row ${set.isBonus ? 'bonus-set' : ''}`, key: set.id }, React.createElement("div", { className: "set-number" }, set.isBonus ? '🔥' : index + 1), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "Poids"), React.createElement("input", { type: "number", value: set.weight, onChange: (e) => onInputChange(e.target.value, 'weight', index) })), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "Reps"), React.createElement("input", { type: "number", value: set.reps, onChange: (e) => onInputChange(e.target.value, 'reps', index) })), React.createElement("div", { className: "set-input" }, React.createElement("label", null, "RIR"), React.createElement("input", { type: "number", value: set.rir, onChange: (e) => onInputChange(e.target.value, 'rir', index) })), React.createElement("button", { className: `set-check-btn ${set.completed ? 'completed' : ''}`, onClick: () => handleCheck(set, index) }, "\u2713"))), renderIntensificationGuide(exercise)));
 };
 
-const ActiveWorkoutView = ({ workout, meta, onEndWorkout, getSuggestedWeight }: { workout: any, meta: any, onEndWorkout: (w: any) => void, getSuggestedWeight: (e: any) => number }) => {
+const ActiveWorkoutView = ({ workout, meta, onEndWorkout, getSuggestedWeight }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isResting, setIsResting] = useState(false);
     const [restTime, setRestTime] = useState(0);
-    const [workoutState, setWorkoutState] = useState<ExerciseRecord[]>(() => 
-        workout.exercises.map((exo: any) => {
-            const processExo = (subExo: any): ExerciseRecord => ({ ...subExo, sets: Array.from({ length: subExo.sets }, (_, i): SetRecord => ({ id: i, weight: getSuggestedWeight(subExo) || '', reps: (subExo.reps || "8").toString().split('-')[0], rir: subExo.rir || 1, completed: false })) });
+    const [workoutState, setWorkoutState] = useState(() => 
+        workout.exercises.map((exo) => {
+            const processExo = (subExo) => ({ ...subExo, sets: Array.from({ length: subExo.sets }, (_, i) => ({ id: i, weight: getSuggestedWeight(subExo) || '', reps: (subExo.reps || "8").toString().split('-')[0], rir: subExo.rir || 1, completed: false })) });
             return exo.type === 'superset' ? { ...exo, exercises: exo.exercises.map(processExo) } : processExo(exo);
         })
     );
     const currentExercise = workoutState[currentIndex];
     const currentBlock = useMemo(() => programData.blocks.find(b => b.weeks.includes(meta.week)), [meta.week]);
 
-    const handleSetComplete = (isCompleted: boolean, setIndex: number, subExoIndex = -1) => {
+    const handleSetComplete = (isCompleted, setIndex, subExoIndex = -1) => {
         const newWorkoutState = JSON.parse(JSON.stringify(workoutState));
         const newExo = newWorkoutState[currentIndex];
-        const set = subExoIndex > -1 ? newExo.exercises![subExoIndex].sets[setIndex] : newExo.sets[setIndex];
+        const set = subExoIndex > -1 ? newExo.exercises[subExoIndex].sets[setIndex] : newExo.sets[setIndex];
         set.completed = isCompleted;
         setWorkoutState(newWorkoutState);
         if (isCompleted) {
@@ -228,37 +239,37 @@ const ActiveWorkoutView = ({ workout, meta, onEndWorkout, getSuggestedWeight }: 
         }
     };
 
-    const handleInputChange = (value: string, field: 'weight' | 'reps' | 'rir', setIndex: number, subExoIndex = -1) => {
+    const handleInputChange = (value, field, setIndex, subExoIndex = -1) => {
         const newWorkoutState = JSON.parse(JSON.stringify(workoutState));
-        const set = (subExoIndex > -1 ? newWorkoutState[currentIndex].exercises![subExoIndex] : newWorkoutState[currentIndex]).sets[setIndex];
-        (set as any)[field] = value;
+        const set = (subExoIndex > -1 ? newWorkoutState[currentIndex].exercises[subExoIndex] : newWorkoutState[currentIndex]).sets[setIndex];
+        set[field] = value;
         setWorkoutState(newWorkoutState);
     };
 
-    const handleAddBonusSet = (newSet: Partial<SetRecord>, subExoIndex = -1) => {
+    const handleAddBonusSet = (newSet, subExoIndex = -1) => {
         const newWorkoutState = [...workoutState];
-        const targetExo = subExoIndex > -1 ? newWorkoutState[currentIndex].exercises![subExoIndex] : newWorkoutState[currentIndex];
+        const targetExo = subExoIndex > -1 ? newWorkoutState[currentIndex].exercises[subExoIndex] : newWorkoutState[currentIndex];
         targetExo.sets.push({ id: targetExo.sets.length, weight: '', reps: '', rir: 0, ...newSet, completed: false, isBonus: true });
         setWorkoutState(newWorkoutState);
     };
-    return <div className="active-workout-overlay"><div className="workout-header"><span className="workout-progress">{currentIndex + 1} / {workoutState.length}</span><button className="end-workout-btn" onClick={() => onEndWorkout({ exercises: workoutState })}>Terminer</button></div><div className="current-exercise-info"><h2>{currentExercise.name || currentExercise.exercises!.map(e => e.name).join(' + ')}</h2></div><div className="sets-tracker-container"><SetsTracker exercise={currentExercise} onSetComplete={handleSetComplete} onInputChange={handleInputChange} onAddBonusSet={handleAddBonusSet} block={currentBlock} /></div><div className="workout-navigation"><button onClick={() => setCurrentIndex(i => i - 1)} disabled={currentIndex === 0}>Précédent</button><button onClick={() => setCurrentIndex(i => i + 1)} disabled={currentIndex === workoutState.length - 1}>Suivant</button></div>{isResting && <RestTimer duration={restTime} onFinish={() => setIsResting(false)} />}</div>;
+    return React.createElement("div", { className: "active-workout-overlay" }, React.createElement("div", { className: "workout-header" }, React.createElement("span", { className: "workout-progress" }, currentIndex + 1, " / ", workoutState.length), React.createElement("button", { className: "end-workout-btn", onClick: () => onEndWorkout({ exercises: workoutState }) }, "Terminer")), React.createElement("div", { className: "current-exercise-info" }, React.createElement("h2", null, currentExercise.name || currentExercise.exercises.map(e => e.name).join(' + '))), React.createElement("div", { className: "sets-tracker-container" }, React.createElement(SetsTracker, { exercise: currentExercise, onSetComplete: handleSetComplete, onInputChange: handleInputChange, onAddBonusSet: handleAddBonusSet, block: currentBlock })), React.createElement("div", { className: "workout-navigation" }, React.createElement("button", { onClick: () => setCurrentIndex(i => i - 1), disabled: currentIndex === 0 }, "Pr\u00E9c\u00E9dent"), React.createElement("button", { onClick: () => setCurrentIndex(i => i + 1), disabled: currentIndex === workoutState.length - 1 }, "Suivant")), isResting && React.createElement(RestTimer, { duration: restTime, onFinish: () => setIsResting(false) }));
 };
 
 // --- VIEW COMPONENTS ---
-const ProjectionsView = ({ getExercisePR }: { getExercisePR: (id: string) => { weight: number, reps: number } }) => {
+const ProjectionsView = ({ getExercisePR }) => {
     return (
-        <div className="stats-container">
-            {programData.stats.projections.map(proj => {
+        React.createElement("div", { className: "stats-container" },
+            programData.stats.projections.map(proj => {
                 const currentPR = getExercisePR(proj.id).weight;
                 const progress = Math.min(100, Math.max(0, ((currentPR - proj.start) / (proj.end - proj.start)) * 100));
                 return (
-                    <div className="projection-item" key={proj.id}>
-                        <div className="stat-item-header"><span>{proj.name}</span><span>{currentPR || proj.start}kg / {proj.end}kg</span></div>
-                        <div className="projection-bar-bg"><div className="projection-bar-fg" style={{width: `${progress}%`}}></div></div>
-                    </div>
+                    React.createElement("div", { className: "projection-item", key: proj.id },
+                        React.createElement("div", { className: "stat-item-header" }, React.createElement("span", null, proj.name), React.createElement("span", null, currentPR || proj.start, "kg / ", proj.end, "kg")),
+                        React.createElement("div", { className: "projection-bar-bg" }, React.createElement("div", { className: "projection-bar-fg", style: { width: `${progress}%` } }))
+                    )
                 );
-            })}
-        </div>
+            })
+        )
     );
 };
 
@@ -266,41 +277,41 @@ const WeeklyVolumeView = () => {
     const statsData = programData.stats.weeklyVolume;
     const maxSeries = Math.max(...statsData.map(s => s.series), ...statsData.map(s => s.optimal[1]));
     return (
-        <div className="stats-container">
-            {statsData.map(stat => (
-                <div key={stat.muscle}>
-                    <div className="stat-item-header"><span>{stat.muscle}</span><span>{stat.series} séries</span></div>
-                    <div className="stat-bar-container">
-                        <div className="stat-optimal-range" style={{left: `${(stat.optimal[0]/maxSeries)*100}%`, width: `${((stat.optimal[1]-stat.optimal[0])/maxSeries)*100}%`}}></div>
-                        <div className="stat-bar" style={{width: `${(stat.series/maxSeries)*100}%`}}></div>
-                    </div>
-                </div>
-            ))}
-        </div>
+        React.createElement("div", { className: "stats-container" },
+            statsData.map(stat => (
+                React.createElement("div", { key: stat.muscle },
+                    React.createElement("div", { className: "stat-item-header" }, React.createElement("span", null, stat.muscle), React.createElement("span", null, stat.series, " s\u00E9ries")),
+                    React.createElement("div", { className: "stat-bar-container" },
+                        React.createElement("div", { className: "stat-optimal-range", style: { left: `${(stat.optimal[0]/maxSeries)*100}%`, width: `${((stat.optimal[1]-stat.optimal[0])/maxSeries)*100}%` } }),
+                        React.createElement("div", { className: "stat-bar", style: { width: `${(stat.series/maxSeries)*100}%` } })
+                    )
+                )
+            ))
+        )
     );
 };
 
-const StatisticsView = ({ getExercisePR, history }: { getExercisePR: (id: string) => { weight: number, reps: number }, history: HistoryData }) => {
+const StatisticsView = ({ getExercisePR, history }) => {
     const hasHistory = Object.keys(history).length > 0;
     return (
-      <div className="main-content">
-        <h2 className="stats-header">Statistiques & Progression</h2>
-        {!hasHistory && <div className="empty-stat">Enregistrez votre première séance pour voir vos statistiques ici !</div>}
-        {hasHistory && <>
-          <div className="stats-section"><h3>🗓️ Calendrier d'Activité</h3><CalendarHeatmap history={history} /></div>
-          <div className="stats-section"><h3>🎯 Objectifs & Projections</h3><ProjectionsView getExercisePR={getExercisePR} /></div>
-          <div className="stats-section"><h3>📈 Progression des Charges</h3>{programData.stats.projections.map(exo => <ProgressionChart key={exo.id} exerciseId={exo.id} exerciseName={exo.name} history={history} /> )}</div>
-        </>}
-        <div className="stats-section"><h3>📊 Volume Hebdomadaire</h3><WeeklyVolumeView /></div>
-      </div>
+      React.createElement("div", { className: "main-content" },
+        React.createElement("h2", { className: "stats-header" }, "Statistiques & Progression"),
+        !hasHistory && React.createElement("div", { className: "empty-stat" }, "Enregistrez votre premi\u00E8re s\u00E9ance pour voir vos statistiques ici !"),
+        hasHistory && React.createElement(React.Fragment, null,
+          React.createElement("div", { className: "stats-section" }, React.createElement("h3", null, "\uD83D\uDCC5 Calendrier d'Activit\u00E9"), React.createElement(CalendarHeatmap, { history: history })),
+          React.createElement("div", { className: "stats-section" }, React.createElement("h3", null, "\uD83C\uDFAF Objectifs & Projections"), React.createElement(ProjectionsView, { getExercisePR: getExercisePR })),
+          React.createElement("div", { className: "stats-section" }, React.createElement("h3", null, "\uD83D\uDCC8 Progression des Charges"), programData.stats.projections.map(exo => React.createElement(ProgressionChart, { key: exo.id, exerciseId: exo.id, exerciseName: exo.name, history: history })) )
+        ),
+        React.createElement("div", { className: "stats-section" }, React.createElement("h3", null, "\uD83D\uDCCA Volume Hebdomadaire"), React.createElement(WeeklyVolumeView, null))
+      )
     );
 };
 
-const ExerciseCard = ({ exercise }: { exercise: any }) => { if (exercise.type === 'superset') return <div className="superset-card">{exercise.exercises.map((subExo: any, i: number) => <div key={subExo.id} style={{ marginBottom: i === 0 ? '1rem' : '0' }}><div className="exercise-header"><h4>{subExo.name}</h4><div className="sets-reps">{subExo.sets} × {subExo.reps}</div></div></div>)}<div className="exercise-details">Repos: {exercise.rest}s après le duo</div></div>; return <div className="exercise-card"><div className="exercise-header"><h4>{exercise.name}</h4><div className="sets-reps">{exercise.sets} × {exercise.reps}</div></div><div className="exercise-details"><span>RIR {exercise.rir} | Repos: {exercise.rest}s</span></div></div>; };
+const ExerciseCard = ({ exercise }) => { if (exercise.type === 'superset') return React.createElement("div", { className: "superset-card" }, exercise.exercises.map((subExo, i) => React.createElement("div", { key: subExo.id, style: { marginBottom: i === 0 ? '1rem' : '0' } }, React.createElement("div", { className: "exercise-header" }, React.createElement("h4", null, subExo.name), React.createElement("div", { className: "sets-reps" }, subExo.sets, " \u00D7 ", subExo.reps)))), React.createElement("div", { className: "exercise-details" }, "Repos: ", exercise.rest, "s apr\u00E8s le duo")); return React.createElement("div", { className: "exercise-card" }, React.createElement("div", { className: "exercise-header" }, React.createElement("h4", null, exercise.name), React.createElement("div", { className: "sets-reps" }, exercise.sets, " \u00D7 ", exercise.reps)), React.createElement("div", { className: "exercise-details" }, React.createElement("span", null, "RIR ", exercise.rir, " | Repos: ", exercise.rest, "s"))); };
 
-const WorkoutPlannerView = ({ onStartWorkout }: { onStartWorkout: (w: any, wk: number, d: string, isHome?: boolean) => void }) => {
+const WorkoutPlannerView = ({ onStartWorkout }) => {
   const [currentWeek, setCurrentWeek] = useState(1);
-  const [activeDay, setActiveDay] = useState(() => { const dayIndex = new Date().getDay(); const dayMap: { [k: number]: string } = {0: 'dimanche', 2: 'mardi', 4: 'jeudi', 5: 'vendredi'}; return dayMap[dayIndex] || 'dimanche'; });
+  const [activeDay, setActiveDay] = useState(() => { const dayIndex = new Date().getDay(); const dayMap = {0: 'dimanche', 2: 'mardi', 4: 'jeudi', 5: 'vendredi'}; return dayMap[dayIndex] || 'dimanche'; });
 
   const { currentBlock, isDeload } = useMemo(() => {
     if (programData.deloadWeeks.includes(currentWeek)) return { isDeload: true, currentBlock: { name: `SEMAINE ${currentWeek}: DELOAD`, technique: { name: "Récupération", desc: "Charges réduites, RPE 5-6." } } };
@@ -309,58 +320,58 @@ const WorkoutPlannerView = ({ onStartWorkout }: { onStartWorkout: (w: any, wk: n
   }, [currentWeek]);
   
   const gymWorkout = useMemo(() => {
-    const originalWorkout = (programData.workouts as any)[activeDay];
+    const originalWorkout = programData.workouts[activeDay];
     if (!originalWorkout) return null;
     let workout = JSON.parse(JSON.stringify(originalWorkout));
-    const getBicepsName = (w: number) => { const b = programData.blocks.find(bl => bl.weeks.includes(w))?.id; return (b === 1 || b === 3) ? 'Incline Curl' : 'Spider Curl'; };
-    workout.exercises.forEach((exo: any) => (exo.type === 'superset' ? exo.exercises : [exo]).forEach((subExo: any) => { if (subExo.bicepsRotation) subExo.name = getBicepsName(currentWeek); }));
+    const getBicepsName = (w) => { const b = programData.blocks.find(bl => bl.weeks.includes(w))?.id; return (b === 1 || b === 3) ? 'Incline Curl' : 'Spider Curl'; };
+    workout.exercises.forEach((exo) => (exo.type === 'superset' ? exo.exercises : [exo]).forEach((subExo) => { if (subExo.bicepsRotation) subExo.name = getBicepsName(currentWeek); }));
     return workout;
   }, [activeDay, currentWeek]);
 
-  const homeWorkout = (programData.homeWorkouts as any)[activeDay];
+  const homeWorkout = programData.homeWorkouts[activeDay];
 
   return (
-    <div className="main-content">
-      <header className="header"><h1>HYBRID MASTER 51</h1></header>
-      <div className="week-navigator"><button onClick={() => setCurrentWeek(w => Math.max(1, w - 1))}>&lt;</button><div className="week-display">Semaine {currentWeek}</div><button onClick={() => setCurrentWeek(w => Math.min(26, w + 1))}>&gt;</button></div>
-      <div className="block-info"><h3>{currentBlock.name}</h3><p><strong>Technique :</strong> {currentBlock.technique.desc}</p></div>
-      <div className="tabs">{['dimanche', 'mardi', 'jeudi', 'vendredi'].map(day => <button key={day} className={`tab ${activeDay === day ? 'active' : ''}`} onClick={() => setActiveDay(day)}>{day.charAt(0).toUpperCase() + day.slice(1)}</button>)}</div>
-      <div className="workout-overview">
-        {gymWorkout && <button className="start-session-btn" onClick={() => onStartWorkout(gymWorkout, currentWeek, activeDay)} disabled={isDeload}>{isDeload ? 'Jour de repos / Deload' : `Commencer - ${gymWorkout.name}`}</button>}
-        {gymWorkout && gymWorkout.exercises.map((exo: any, index: number) => <ExerciseCard key={exo.id || `superset-${index}`} exercise={exo} />)}
-        {homeWorkout && <div className="home-workout-card"><div><h4>🏠 Séance à la Maison</h4><p>{homeWorkout.name} - {homeWorkout.sets} × {homeWorkout.reps}</p></div><button className="start-home-btn" onClick={() => onStartWorkout({ name: "Séance Maison", exercises: [homeWorkout] }, currentWeek, activeDay, true)}>Démarrer</button></div>}
-        {!gymWorkout && !homeWorkout && <p style={{textAlign: 'center', marginTop: '2rem'}}>Jour de repos.</p>}
-      </div>
-    </div>
+    React.createElement("div", { className: "main-content" },
+      React.createElement("header", { className: "header" }, React.createElement("h1", null, "HYBRID MASTER 51")),
+      React.createElement("div", { className: "week-navigator" }, React.createElement("button", { onClick: () => setCurrentWeek(w => Math.max(1, w - 1)) }, "<"), React.createElement("div", { className: "week-display" }, "Semaine ", currentWeek), React.createElement("button", { onClick: () => setCurrentWeek(w => Math.min(26, w + 1)) }, ">")),
+      React.createElement("div", { className: "block-info" }, React.createElement("h3", null, currentBlock.name), React.createElement("p", null, React.createElement("strong", null, "Technique :"), " ", currentBlock.technique.desc)),
+      React.createElement("div", { className: "tabs" }, ['dimanche', 'mardi', 'jeudi', 'vendredi'].map(day => React.createElement("button", { key: day, className: `tab ${activeDay === day ? 'active' : ''}`, onClick: () => setActiveDay(day) }, day.charAt(0).toUpperCase() + day.slice(1)))),
+      React.createElement("div", { className: "workout-overview" },
+        gymWorkout && React.createElement("button", { className: "start-session-btn", onClick: () => onStartWorkout(gymWorkout, currentWeek, activeDay), disabled: isDeload }, isDeload ? 'Jour de repos / Deload' : `Commencer - ${gymWorkout.name}`),
+        gymWorkout && gymWorkout.exercises.map((exo, index) => React.createElement(ExerciseCard, { key: exo.id || `superset-${index}`, exercise: exo })),
+        homeWorkout && React.createElement("div", { className: "home-workout-card" }, React.createElement("div", null, React.createElement("h4", null, "\uD83C\uDFE0 S\u00E9ance \u00E0 la Maison"), React.createElement("p", null, homeWorkout.name, " - ", homeWorkout.sets, " \u00D7 ", homeWorkout.reps)), React.createElement("button", { className: "start-home-btn", onClick: () => onStartWorkout({ name: "Séance Maison", exercises: [homeWorkout] }, currentWeek, activeDay, true) }, "D\u00E9marrer")),
+        !gymWorkout && !homeWorkout && React.createElement("p", { style: { textAlign: 'center', marginTop: '2rem' } }, "Jour de repos.")
+      )
+    )
   );
 };
 
-const BottomNav = ({ currentView, setView }: { currentView: string, setView: (v: string) => void }) => (
-    <nav className="bottom-nav"><button className={`nav-item ${currentView === 'program' ? 'active' : ''}`} onClick={() => setView('program')}><DumbbellIcon /><span>Programme</span></button><button className={`nav-item ${currentView === 'stats' ? 'active' : ''}`} onClick={() => setView('stats')}><ChartIcon /><span>Stats</span></button></nav>
+const BottomNav = ({ currentView, setView }) => (
+    React.createElement("nav", { className: "bottom-nav" }, React.createElement("button", { className: `nav-item ${currentView === 'program' ? 'active' : ''}`, onClick: () => setView('program') }, React.createElement(DumbbellIcon, null), React.createElement("span", null, "Programme")), React.createElement("button", { className: `nav-item ${currentView === 'stats' ? 'active' : ''}`, onClick: () => setView('stats') }, React.createElement(ChartIcon, null), React.createElement("span", null, "Stats")))
 );
 
 // --- MAIN APP COMPONENT ---
 const App = () => {
   const [currentView, setCurrentView] = useState('program');
-  const [activeWorkout, setActiveWorkout] = useState<any>(null);
+  const [activeWorkout, setActiveWorkout] = useState(null);
   const { history, saveWorkout, getExercisePR, getSuggestedWeight } = useWorkoutHistory();
   
-  const handleStartWorkout = (workout: any, week: number, day: string, isHomeWorkout = false) => { setActiveWorkout({ workout, meta: { week, day, isHomeWorkout }, startTime: Date.now() }); };
-  const handleEndWorkout = (completedWorkout: any) => {
+  const handleStartWorkout = (workout, week, day, isHomeWorkout = false) => { setActiveWorkout({ workout, meta: { week, day, isHomeWorkout }, startTime: Date.now() }); };
+  const handleEndWorkout = (completedWorkout) => {
     if (completedWorkout) { saveWorkout({ date: new Date().toISOString(), ...activeWorkout.meta, exercises: completedWorkout.exercises }); }
     setActiveWorkout(null);
   };
 
   return (
-    <div className="app-container">
-      <div style={{display: currentView === 'program' ? 'block' : 'none', height: '100%'}}><WorkoutPlannerView onStartWorkout={handleStartWorkout} /></div>
-      <div style={{display: currentView === 'stats' ? 'block' : 'none', height: '100%'}}><StatisticsView getExercisePR={getExercisePR} history={history} /></div>
-      {activeWorkout && <ActiveWorkoutView key={activeWorkout.startTime} workout={activeWorkout.workout} meta={activeWorkout.meta} onEndWorkout={handleEndWorkout} getSuggestedWeight={getSuggestedWeight} />}
-      {!activeWorkout && <BottomNav currentView={currentView} setView={setCurrentView} />}
-    </div>
+    React.createElement("div", { className: "app-container" },
+      React.createElement("div", { style: { display: currentView === 'program' ? 'block' : 'none', height: '100%' } }, React.createElement(WorkoutPlannerView, { onStartWorkout: handleStartWorkout })),
+      React.createElement("div", { style: { display: currentView === 'stats' ? 'block' : 'none', height: '100%' } }, React.createElement(StatisticsView, { getExercisePR: getExercisePR, history: history })),
+      activeWorkout && React.createElement(ActiveWorkoutView, { key: activeWorkout.startTime, workout: activeWorkout.workout, meta: activeWorkout.meta, onEndWorkout: handleEndWorkout, getSuggestedWeight: getSuggestedWeight }),
+      !activeWorkout && React.createElement(BottomNav, { currentView: currentView, setView: setCurrentView })
+    )
   );
 };
 
 // --- RENDER APP ---
 const container = document.getElementById('root');
-if(container) { createRoot(container).render(<App />); }
+if(container) { createRoot(container).render(React.createElement(App, null)); }
